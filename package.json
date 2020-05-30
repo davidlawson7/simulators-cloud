@@ -1,0 +1,17 @@
+{
+  "name": "simulators-cloud",
+  "scripts": {
+    "start": "func host start",
+    "test": "echo \"No tests yet...\""
+  },
+  "author": "",
+  "version": "1.0.0",
+  "main": "index.js",
+  "keywords": [],
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "apollo-server-azure-functions": "^2.14.1",
+    "graphql": "^15.0.0"
+  }
+}
