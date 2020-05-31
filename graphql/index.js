@@ -8,61 +8,50 @@ if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
 const { ApolloServer, gql } = require('apollo-server-azure-functions');
 const { findOne } = require('../data-sources/cosmos/cosmosdb');
 const { TrackCoronaAPI } = require('../data-sources/track-corona/track-corona');
+const { distanceMeters } = require('../shared/helpers');
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = gql`
-  type CovidDataByCity {
-    confirmedCases: Int!
-    recoveredCases: Int!
-    activeCases: Int!
-    deaths: Int!
-    city: String
-    state: String
-    country: String!
-    latitude: Int!
-    longitude: Int!
-  }
-
-  type TestDocument {
-    id: String
-    name: String
+  type CovidData {
+    confirmed: Int
+    recovered: Int
+    dead: Int
+    country_code: String
+    location: String
+    latitude: Float
+    longitude: Float
+    updated: String
   }
 
   type Query {
-    mongoTestDoc: TestDocument
-    covidDataByCity: CovidDataByCity
+    covidDataLonLat(lon: Float!, lat: Float!): CovidData
+    covidDataByCountry: [CovidData]
   }
 `;
 
 // Provide resolver functions for your schema fields
 const resolvers = {
   Query: {
-    // mongoTestDoc: async () => {
-    //   result = await findOne('test_db', 'test_collection', { id: '1' });
-    //   return result;
-    // },
-    covidDataByCity: async(_source, _args, { dataSources }) => {
-      let data = await dataSources.trackCoronaAPI.getCountryLevelData('au');
-
-      if (!(data.length > 1)) {
-        return null;
-      }
-
-      return {
-
-      }
+    covidDataLonLat: async(_source, { lon, lat }, { dataSources }) => {
       
-      console.log('Response', data);
-      return {
-        confirmedCases: 102,
-        recoveredCases: 100,
-        activeCases: 2,
-        deaths: 0,
-        country: 'Australia',
-        latitude: 0,
-        longitude: 1
-      };
+      let raw = await dataSources.trackCoronaAPI.getProvinces();
+      let convertedToDistanceFromClick = raw.data.map((longitude, latitude, location) => {
+        distance = distanceMeters(lon, lat, longitude, latitude);
+        console.log('distance', distance)
+        return {
+          distance,
+          location
+        }
+      });
+      console.log('me', convertedToDistanceFromClick);
+      let sorted = convertedToDistanceFromClick.sort((a, b) => a.distance - b.distance);
+      let closest = raw.data.find((data) => data.location === sorted[0].location);
+
+      return closest;
     },
+    covidDataByCountry: async(_source, _args, { dataSources }) => {
+      return (await dataSources.trackCoronaAPI.getCountries()).data;
+    }
   },
 };
 
